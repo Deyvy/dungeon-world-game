@@ -21,8 +21,7 @@ import ConfigStep from "./steps/config-step";
 import EquipmentStep from "./steps/equipment-step";
 import BondsStep from "./steps/bonds-step";
 
-const STEP_COMPONENTS: Record<WizardStep, React.ComponentType> = {
-  class: ClassStep,
+const STEP_COMPONENTS: Record<Exclude<WizardStep, "class">, React.ComponentType> = {
   race: RaceStep,
   identity: IdentityStep,
   stats: StatsStep,
@@ -68,8 +67,6 @@ function WizardContent({ classListPromise }: WizardShellProps) {
     [currentStep, draft]
   );
 
-  const StepComponent = STEP_COMPONENTS[currentStep];
-
   function handleNext() {
     if (!validation.valid) {
       return;
@@ -93,12 +90,21 @@ function WizardContent({ classListPromise }: WizardShellProps) {
     void classes;
   }
 
+  function renderCurrentStep() {
+    if (currentStep === "class") {
+      return <ClassStep classes={classes} />;
+    }
+
+    const StepComponent = STEP_COMPONENTS[currentStep];
+    return <StepComponent />;
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-6">
       <StepNavigation currentStep={currentStep} />
 
       <div className="rounded border bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-        <StepComponent />
+        {renderCurrentStep()}
       </div>
 
       {!validation.valid && validation.errors.length > 0 && (

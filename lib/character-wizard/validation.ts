@@ -140,9 +140,8 @@ export function validateStep(
           );
 
           if (isUnsupportedElement(result)) {
-            errors.push(
-              `${move.title}: tipo de elemento no soportado (${result.type}).`
-            );
+            const detail = result.reason ?? `tipo ${result.type}`;
+            errors.push(`${move.title}: ${detail}.`);
           } else if (isInvalidElement(result)) {
             errors.push(`${move.title}: ${result.errors.join(" ")}`);
           }

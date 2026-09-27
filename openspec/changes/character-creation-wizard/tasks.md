@@ -171,18 +171,19 @@ Depends on Phase 1 and Phase 2 (class detail).
 
 - [x] 4.1 Inspect seeded move metadata to lock the completion key
   - Acceptance criteria: Document whether the DB uses `requiresCompletion`, `needsCompletion`, or both; update parser to treat truthy `requiresCompletion` canonical with `needsCompletion` as fallback; remove ambiguity before production code hardens.
+  - Evidence (2026-09-27): Queried `GET /api/classes/1` and `/api/classes/2`. Every initial-move `classContent.metadata` is `null`; neither `requiresCompletion` nor `needsCompletion` is present in the seed. `requiresCompletion` remains canonical, `needsCompletion` remains a compatibility fallback, and moves with non-empty `contentElements` default to requiring completion.
   - File scope: `dungeon-world-api` seeded DB (read-only), `lib/character-wizard/content-elements.ts`.
   - Checks: Design open question #1.
   - Rollback notes: Revert parser change.
 
 - [x] 4.2 Implement content-element metadata parser and cardinality rules
-  - Acceptance criteria: Moves without completion flag render text only; moves with the flag render elements in `sortOrder`; RADIO/SELECT default to exactly one; CHECKBOX defaults to 0..n unless completion required (then min 1); explicit `minSelect`/`maxSelect` override defaults.
+  - Acceptance criteria: Moves without completion flag render text only; moves with the flag render elements in `sortOrder`; RADIO/SELECT default to exactly one; CHECKBOX defaults to 0..n unless completion required (then min 1); explicit `minSelect`/`maxSelect` override defaults and are validated as representable by the UI (e.g. RADIO/SELECT cannot require more than one selection).
   - File scope: `lib/character-wizard/content-elements.ts`.
   - Checks: Spec scenarios for required vs ordinary move and min/max select.
   - Rollback notes: Delete the file.
 
 - [x] 4.3 Implement generic content-element renderer
-  - Acceptance criteria: Supports TEXT, TEXTAREA, NUMBER, BOOLEAN, RADIO_GROUP, SELECT, CHECKBOX_GROUP; unknown types mark the move invalid with a Spanish message; answers keyed by `move.id` + `element.id` survive Back/Forward.
+  - Acceptance criteria: Supports TEXT, TEXTAREA, NUMBER, BOOLEAN, RADIO_GROUP, SELECT, CHECKBOX_GROUP; unknown types or unsupported minSelect/maxSelect configs mark the move invalid with a Spanish message; answers keyed by `move.id` + `element.id` survive Back/Forward.
   - File scope: `lib/character-wizard/content-element-renderer.tsx`.
   - Checks: Spec scenario "Unknown element is not silently accepted".
   - Rollback notes: Delete the file.
@@ -194,13 +195,15 @@ Depends on Phase 1 and Phase 2 (class detail).
   - Rollback notes: Delete the component.
 
 - [x] 4.5 Create temporary mock spell module for draft lists
-  - Acceptance criteria: `lib/character-wizard/mocks/spells.ts` is clearly marked temporary; provides level-0 cantrips/prayers and any class-specific level-1+ lists not served by the backend; ids copied from the seeded DB so finalize can persist them where allowed.
+  - Acceptance criteria: `lib/character-wizard/mocks/spells.ts` is clearly marked temporary; provides level-0 cantrips/prayers and any class-specific level-1+ lists not served by the backend; fallback ids are isolated in deterministic ranges and flagged as non-persistable.
+  - Evidence: `GET /api/spells` returns only the literal string `"This action returns all spells"`; no pre-character spell list is available. Fallback ids are kept in 9000–9099 (Mage) and 9100–9199 (Cleric) ranges and identified by `isFallbackSpellId`.
   - File scope: `lib/character-wizard/mocks/spells.ts`.
   - Checks: Design open question #4; spec scenario "Temporary level-zero spell data is isolated".
   - Rollback notes: Delete the file.
 
 - [x] 4.6 Enforce backend spell-cap at finalize
-  - Acceptance criteria: `POST /characters/:id/spells` is sent only with a non-empty subset whose `sum(spellLevel) <= character.level + 1` (level 1 → cap 2); full wizard choices remain captured in move-element answers.
+  - Acceptance criteria: `POST /characters/:id/spells` is sent only with a non-empty subset whose `sum(spellLevel) <= character.level + 1` (level 1 → cap 2); full wizard choices remain captured in move-element answers; `computePersistableSpellIds` stays a pure Phase 4 helper with an explicit integration contract.
+  - Evidence: `computePersistableSpellIds` is pure (no I/O, injectable lookup) and documented for Phase 5. Because the fallback ids are placeholders, finalize for spellcasting classes is expected to fail until real seeded ids replace them.
   - File scope: `lib/character-wizard/commit.ts` (partial), `lib/character-wizard/mocks/spells.ts`.
   - Checks: Design open question #5.
   - Rollback notes: Revert commit logic.
@@ -253,8 +256,9 @@ Depends on Phase 1, Phase 3 (derived stats), and Phase 4 (no direct dependency b
 
 These are the open questions from the design, converted into explicit checks before or during apply.
 
-- [ ] 6.1 Lock the move-completion metadata key
+- [x] 6.1 Lock the move-completion metadata key
   - Acceptance criteria: Inspect at least one seeded row per class in `classContent.metadata`; decide whether the code uses `requiresCompletion` or `needsCompletion`; update parser and remove fallback alias if seeded data is consistent.
+  - Evidence: Inspected Guerrero (id 1) and Mago (id 2). All initial-move `metadata` fields are `null`; neither canonical nor alias key is used by the seed. Kept `requiresCompletion` canonical and `needsCompletion` as a documented compatibility fallback; removed the ambiguous `default` source in favor of explicit `contentElements` and `none` sources.
   - File scope: `lib/character-wizard/content-elements.ts`.
 
 - [ ] 6.2 Confirm armor tag spelling in seeded equipment
@@ -265,8 +269,9 @@ These are the open questions from the design, converted into explicit checks bef
   - Acceptance criteria: Each official class has bond strings matching the Spanish Dungeon World playbook; no `_____` placeholder is left unannounced to the user.
   - File scope: `lib/character-wizard/bonds.ts`.
 
-- [ ] 6.4 Map mock spell ids to seeded `spells` table rows
+- [x] 6.4 Map mock spell ids to seeded `spells` table rows
   - Acceptance criteria: `lib/character-wizard/mocks/spells.ts` ids exist in the backend `spells` table for the classes that need them; any missing id is replaced with the real seeded id before finalize is exercised.
+  - Evidence: Real seeded spell ids are unavailable. `GET /api/spells` returns only the literal string `"This action returns all spells"`; no pre-character spell endpoint exists. Only Guerrero and Mago are seeded, and Mago has no spells configured. Preserved deterministic fallback ids in isolated ranges (9000–9099 Mage, 9100–9199 Cleric) with `isFallbackSpellId`; finalize for spellcasting classes will fail until real ids replace them.
   - File scope: `lib/character-wizard/mocks/spells.ts`.
 
 - [ ] 6.5 Verify custom-alignment leftover behavior

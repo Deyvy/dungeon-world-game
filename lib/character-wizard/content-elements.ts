@@ -7,7 +7,12 @@ import {
 
 export type MoveMetadata = {
   requiresCompletion: boolean;
-  source: "requiresCompletion" | "needsCompletion" | "default" | "explicitFalse";
+  source:
+    | "requiresCompletion"
+    | "needsCompletion"
+    | "contentElements"
+    | "explicitFalse"
+    | "none";
 };
 
 export type ElementCardinality = {
@@ -18,13 +23,17 @@ export type ElementCardinality = {
 /**
  * Parse move metadata and decide whether the move requires player completion.
  *
- * Canonical key: `requiresCompletion`. Fallback alias: `needsCompletion`.
+ * Canonical key: `requiresCompletion`. Compatibility fallback alias:
+ * `needsCompletion`. The alias is kept for older seed data or future content
+ * imports that may use it; new content should always use `requiresCompletion`.
  *
- * Apply-time finding: the currently seeded `classContent` rows do not set either
- * flag, but the only initial move that has configurable content (Guerrero's
- * "Arma Distintiva") ships `metadata: null`. To keep the wizard usable against
- * the current seeded data, a move with non-empty `contentElements` defaults to
- * requiring completion. An explicit `requiresCompletion: false` opts out.
+ * Apply-time finding (seeded DB, 2026-09-27): every initial-move row in the
+ * current seed uses `metadata: null`. Guerrero's "Arma Distintiva" (contentId
+ * 8) ships four content elements with `metadata: null`. Because no seeded row
+ * sets the canonical or alias flag, the only observed source is the
+ * content-elements default. This default remains active so the wizard is usable
+ * against the current seed; an explicit `requiresCompletion: false` still opts
+ * out.
  */
 export function parseMoveMetadata(
   metadata: unknown,
@@ -39,7 +48,10 @@ export function parseMoveMetadata(
       return { requiresCompletion: false, source: "explicitFalse" };
     }
 
-    if (record.requiresCompletion === true || record.requiresCompletion === "true") {
+    if (
+      record.requiresCompletion === true ||
+      record.requiresCompletion === "true"
+    ) {
       return { requiresCompletion: true, source: "requiresCompletion" };
     }
 
@@ -49,10 +61,10 @@ export function parseMoveMetadata(
   }
 
   if (options.hasContentElements) {
-    return { requiresCompletion: true, source: "default" };
+    return { requiresCompletion: true, source: "contentElements" };
   }
 
-  return { requiresCompletion: false, source: "default" };
+  return { requiresCompletion: false, source: "none" };
 }
 
 function parseJsonMetadata(metadata: unknown): unknown {
@@ -103,10 +115,122 @@ export function getElementCardinality(
   }
 }
 
+export type ElementConfigValidation =
+  | { kind: "supported" }
+  | { kind: "unsupported"; reason: string };
+
+/**
+ * Validate that the element's own configuration (type, minSelect, maxSelect,
+ * option count) is representable by the generic renderer.
+ *
+ * Scalar types ignore minSelect/maxSelect. RADIO_GROUP and SELECT only support
+ * single-select semantics (maxSelect must be 1 and minSelect must be 0 or 1);
+ * any other bound is blocked as unsupported. CHECKBOX_GROUP supports any
+ * non-negative minSelect and maxSelect provided the option list is long enough
+ * and minSelect does not exceed maxSelect.
+ *
+ * The caller must treat an unsupported config like an unsupported element type:
+ * the move cannot be completed and the step is invalid.
+ */
+export function validateElementConfig(
+  element: ContentElement
+): ElementConfigValidation {
+  if (!isSupportedElementType(element.type)) {
+    return {
+      kind: "unsupported",
+      reason: `Tipo de elemento no soportado: ${element.type}`,
+    };
+  }
+
+  const optionCount = (element.options ?? []).length;
+
+  switch (element.type) {
+    case "RADIO_GROUP":
+    case "SELECT": {
+      const min = element.minSelect ?? 1;
+      const max = element.maxSelect ?? 1;
+
+      if (min > max) {
+        return {
+          kind: "unsupported",
+          reason: `Configuración inválida: minSelect (${min}) es mayor que maxSelect (${max}).`,
+        };
+      }
+
+      if (max > 1) {
+        return {
+          kind: "unsupported",
+          reason: `Este selector solo admite una opción, pero maxSelect es ${max}.`,
+        };
+      }
+
+      if (min > 1) {
+        return {
+          kind: "unsupported",
+          reason: `Este selector solo admite una opción, pero minSelect es ${min}.`,
+        };
+      }
+
+      if (max > optionCount) {
+        return {
+          kind: "unsupported",
+          reason: `No hay suficientes opciones para seleccionar ${max}.`,
+        };
+      }
+
+      if (min > optionCount) {
+        return {
+          kind: "unsupported",
+          reason: `No hay suficientes opciones para requerir ${min}.`,
+        };
+      }
+
+      return { kind: "supported" };
+    }
+
+    case "CHECKBOX_GROUP": {
+      const min = element.minSelect ?? 0;
+      const max = element.maxSelect;
+
+      if (max !== undefined && min > max) {
+        return {
+          kind: "unsupported",
+          reason: `Configuración inválida: minSelect (${min}) es mayor que maxSelect (${max}).`,
+        };
+      }
+
+      if (max !== undefined && max > optionCount) {
+        return {
+          kind: "unsupported",
+          reason: `No hay suficientes opciones para seleccionar ${max}.`,
+        };
+      }
+
+      if (min > optionCount) {
+        return {
+          kind: "unsupported",
+          reason: `No hay suficientes opciones para requerir ${min}.`,
+        };
+      }
+
+      return { kind: "supported" };
+    }
+
+    default:
+      return { kind: "supported" };
+  }
+}
+
+export function isUnsupportedConfig(
+  result: ElementConfigValidation
+): result is { kind: "unsupported"; reason: string } {
+  return result.kind === "unsupported";
+}
+
 export type ElementValidationResult =
   | { kind: "valid" }
   | { kind: "invalid"; errors: string[] }
-  | { kind: "unsupported"; type: string };
+  | { kind: "unsupported"; type: string; reason?: string };
 
 /**
  * Validate a single element answer against the element type and cardinality.
@@ -119,6 +243,15 @@ export function validateElementAnswer(
   answer: ElementAnswer | undefined,
   requiresCompletion: boolean
 ): ElementValidationResult {
+  const configValidation = validateElementConfig(element);
+  if (configValidation.kind === "unsupported") {
+    return {
+      kind: "unsupported",
+      type: element.type,
+      reason: configValidation.reason,
+    };
+  }
+
   const errors: string[] = [];
 
   switch (element.type) {
@@ -185,6 +318,7 @@ export function validateElementAnswer(
       return {
         kind: "unsupported",
         type: element.type,
+        reason: `Tipo de elemento no soportado: ${element.type}`,
       };
   }
 

@@ -5,6 +5,7 @@ import ContentElementRenderer from "@/lib/character-wizard/content-element-rende
 import {
   isSupportedElementType,
   parseMoveMetadata,
+  validateElementConfig,
 } from "@/lib/character-wizard/content-elements";
 import { useWizard } from "@/lib/character-wizard/wizard-context";
 import {
@@ -146,9 +147,16 @@ function MoveCard({ move }: { move: MoveContent }) {
     (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
   );
 
-  const unsupportedTypes = elements
-    .map((element) => element.type)
-    .filter((type) => !isSupportedElementType(type));
+  const unsupportedConfigs = elements
+    .map((element) => ({
+      element,
+      validation: validateElementConfig(element),
+    }))
+    .filter(
+      (item) =>
+        !isSupportedElementType(item.element.type) ||
+        item.validation.kind === "unsupported"
+    );
 
   return (
     <section
@@ -166,13 +174,21 @@ function MoveCard({ move }: { move: MoveContent }) {
         )}
       </div>
 
-      {unsupportedTypes.length > 0 && (
+      {unsupportedConfigs.length > 0 && (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           <p className="font-medium">Movimiento bloqueado</p>
+          <ul className="list-disc space-y-1 pl-4 text-sm">
+            {unsupportedConfigs.map(({ element, validation }) => (
+              <li key={element.id}>
+                {element.label} ({element.type})
+                {validation.kind === "unsupported"
+                  ? `: ${validation.reason}`
+                  : ": tipo de configuración no soportado."}
+              </li>
+            ))}
+          </ul>
           <p className="text-sm">
-            Este movimiento contiene tipos de configuración no soportados:{" "}
-            {unsupportedTypes.join(", ")}. No podrás finalizar hasta que se
-            resuelvan.
+            No podrás finalizar hasta que se resuelvan.
           </p>
         </div>
       )}

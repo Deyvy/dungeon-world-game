@@ -9,6 +9,7 @@ import { useWizard } from "@/lib/character-wizard/wizard-context";
 import {
   getElementCardinality,
   isSupportedElementType,
+  validateElementConfig,
 } from "@/lib/character-wizard/content-elements";
 
 type ContentElementRendererProps = {
@@ -23,8 +24,18 @@ export default function ContentElementRenderer({
   const { draft } = useWizard();
   const answer = draft.moveAnswers[moveId]?.[element.id];
 
-  if (!isSupportedElementType(element.type)) {
-    return <UnsupportedElement element={element} />;
+  const configValidation = validateElementConfig(element);
+  if (!isSupportedElementType(element.type) || configValidation.kind === "unsupported") {
+    return (
+      <UnsupportedElement
+        element={element}
+        reason={
+          configValidation.kind === "unsupported"
+            ? configValidation.reason
+            : undefined
+        }
+      />
+    );
   }
 
   switch (element.type) {
@@ -96,14 +107,23 @@ export default function ContentElementRenderer({
   }
 }
 
-function UnsupportedElement({ element }: { element: ContentElement }) {
+function UnsupportedElement({
+  element,
+  reason,
+}: {
+  element: ContentElement;
+  reason?: string;
+}) {
   return (
     <div className="rounded border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-      <p className="font-medium">Tipo de elemento no soportado</p>
+      <p className="font-medium">Configuración no soportada</p>
       <p className="text-sm">
-        El elemento &quot;{element.label}&quot; usa un tipo de configuración que el
-        asistente no reconoce ({element.type}). Completa el resto del
-        formulario; este movimiento no se podrá finalizar hasta que se resuelva.
+        El elemento &quot;{element.label}&quot; ({element.type})
+        {reason !== undefined
+          ? `: ${reason}`
+          : " usa un tipo de configuración que el asistente no reconoce."}{" "}
+        Completa el resto del formulario; este movimiento no se podrá finalizar
+        hasta que se resuelva.
       </p>
     </div>
   );

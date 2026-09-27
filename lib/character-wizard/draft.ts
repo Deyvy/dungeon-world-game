@@ -22,6 +22,7 @@ export type WizardDraft = {
   classId: number | null;
   classDetail: ClassDetail | null;
   raceContentId: number | null;
+  raceMechanic: string;
   name: string;
   appearance: AppearanceDraft;
   stats: AbilityStats;
@@ -53,6 +54,7 @@ export const initialWizardDraft: WizardDraft = {
   classId: null,
   classDetail: null,
   raceContentId: null,
+  raceMechanic: "",
   name: "",
   appearance: { ...initialAppearance },
   stats: { ...initialStats },
@@ -66,7 +68,7 @@ export const initialWizardDraft: WizardDraft = {
 export type WizardAction =
   | { type: "selectClass"; classId: number }
   | { type: "setClassDetail"; classDetail: ClassDetail }
-  | { type: "selectRace"; raceContentId: number }
+  | { type: "selectRace"; raceContentId: number; raceMechanic: string }
   | { type: "setIdentity"; name: string; appearance: AppearanceDraft }
   | { type: "assignStats"; stats: AbilityStats }
   | { type: "setAlignment"; alignment: WizardAlignment | null }
@@ -86,6 +88,7 @@ function clearDependentChoices(draft: WizardDraft): WizardDraft {
   return {
     ...draft,
     raceContentId: null,
+    raceMechanic: "",
     alignment: null,
     moveAnswers: {},
     spellIds: [],
@@ -119,6 +122,7 @@ export function wizardReducer(
       return {
         ...draft,
         raceContentId: action.raceContentId,
+        raceMechanic: action.raceMechanic,
       };
 
     case "setIdentity":

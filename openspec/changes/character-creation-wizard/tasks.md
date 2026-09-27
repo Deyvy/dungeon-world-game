@@ -116,10 +116,10 @@ Depends on Phase 1.
   - Rollback notes: Delete the component.
 
 - [x] 2.2 Implement Step 2 — Race selection
-  - Acceptance criteria: Shows only `classDetail.races`; selecting a race stores `raceContentId` and shows the race description as the racial mechanic.
-  - File scope: `app/characters/new/steps/race-step.tsx`.
+  - Acceptance criteria: Shows only `classDetail.races`; selecting a race stores `raceContentId` and stores the race description (`ClassContent.content`) as `raceMechanic` in the draft; the mechanic is cleared on class change.
+  - File scope: `app/characters/new/steps/race-step.tsx`, `lib/character-wizard/draft.ts`.
   - Checks: Spec scenario "Race is restricted to the selected class".
-  - Rollback notes: Delete the component.
+  - Rollback notes: Delete the component; revert `raceMechanic` additions in the draft type/reducer.
 
 - [x] 2.3 Implement Step 6 — Alignment selection
   - Acceptance criteria: Lists `classDetail.alignments`; supports standard selection; supports custom alignment with name + description; validation blocks empty custom fields.

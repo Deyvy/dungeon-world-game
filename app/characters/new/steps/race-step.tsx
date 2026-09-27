@@ -49,7 +49,11 @@ export default function RaceStep() {
                   value={race.id}
                   checked={draft.raceContentId === race.id}
                   onChange={() =>
-                    dispatch({ type: "selectRace", raceContentId: race.id })
+                    dispatch({
+                      type: "selectRace",
+                      raceContentId: race.id,
+                      raceMechanic: race.content ?? "",
+                    })
                   }
                 />
                 <span className="font-medium">{race.title}</span>

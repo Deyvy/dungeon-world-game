@@ -12,6 +12,12 @@
 
 - None. The previous Phase 0 blocker has been reconciled: the sibling `dungeon-world-api` already exposes `damageDice` on the schema, `ClassDetailDto`, and the class mapper.
 
+## Corrective Finding (this pass)
+
+- Phase 2 task 2.2 displayed the selected race description but only stored `raceContentId` in `WizardDraft`.
+- Fix: extended `WizardDraft` with `raceMechanic: string`; `selectRace` now carries `raceContentId` and `raceMechanic` (populated from `ClassContent.content`); `clearDependentChoices` resets `raceMechanic` on class change.
+- Verification: `pnpm lint` passes (0 errors); `pnpm build` succeeds for the dynamic `/characters/new` route.
+
 ## Completed Tasks
 
 ### Phase 0: Backend Extension (externally verified)
@@ -35,7 +41,7 @@
 ### Phase 2: Class, Race, and Alignment
 
 - [x] 2.1 Implement Step 1 — Class selection
-- [x] 2.2 Implement Step 2 — Race selection
+- [x] 2.2 Implement Step 2 — Race selection (corrected: stores `raceMechanic` from race description)
 - [x] 2.3 Implement Step 6 — Alignment selection
 - [x] 2.4 Verify class-change invalidation
 
@@ -53,7 +59,8 @@
 | File | Action | Purpose |
 |---|---|---|
 | `app/characters/new/steps/class-step.tsx` | Modified | Loads class detail on selection, shows `d{n}` damage dice, base HP, and base load; avoids duplicate fetches and shows loading/error states. |
-| `app/characters/new/steps/race-step.tsx` | Modified | Lists only the selected class's races, displays the racial mechanic from the race content, and stores `raceContentId`. |
+| `app/characters/new/steps/race-step.tsx` | Modified | Lists only the selected class's races, displays the racial mechanic from the race content, and dispatches both `raceContentId` and `raceMechanic` to the draft. |
+| `lib/character-wizard/draft.ts` | Modified | Adds `raceMechanic` to `WizardDraft`; `selectRace` stores it; `clearDependentChoices` clears it on class change. |
 | `app/characters/new/steps/alignment-step.tsx` | Modified | Supports standard alignment selection from `classDetail.alignments` and a custom alignment with name + description; disables custom inputs until custom mode is active. |
 | `lib/api/types.ts` | Modified | Renames `ClassContent.name` to `ClassContent.title` to match the backend `ClassDetailDto` contract. |
 | `lib/character-wizard/validation.ts` | Modified | Updates move validation error message to use `move.title` instead of the removed `move.name`. |

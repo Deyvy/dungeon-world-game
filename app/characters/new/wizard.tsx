@@ -1,15 +1,18 @@
 "use client";
 
-import { Suspense, use, useMemo, useState } from "react";
+import { Suspense, use, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   getStepIndex,
   getStepLabel,
   STEP_ORDER,
+  validateAllSteps,
   validateStep,
   WizardStep,
 } from "@/lib/character-wizard/validation";
 import { useWizard } from "@/lib/character-wizard/wizard-context";
-import { ClassSummary } from "@/lib/api/types";
+import { ClassSummary, WizardError } from "@/lib/api/types";
+import { commitCharacter } from "@/lib/character-wizard/commit";
 
 import ClassStep from "./steps/class-step";
 import RaceStep from "./steps/race-step";
@@ -54,10 +57,14 @@ function WizardSkeleton() {
 
 function WizardContent({ classListPromise }: WizardShellProps) {
   const classes = use(classListPromise);
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<WizardStep>("class");
-  const { draft } = useWizard();
+  const { draft, dispatch } = useWizard();
+  const [isPending, startTransition] = useTransition();
+  const [commitError, setCommitError] = useState<WizardError | null>(null);
+  const [successCharacterId, setSuccessCharacterId] = useState<number | null>(null);
 
-  // The class list will be consumed by the class step in Phase 2.
+  // The class list will be consumed by the class step.
   void classes;
 
   const currentIndex = getStepIndex(currentStep);
@@ -65,6 +72,11 @@ function WizardContent({ classListPromise }: WizardShellProps) {
   const validation = useMemo(
     () => validateStep(currentStep, draft),
     [currentStep, draft]
+  );
+
+  const allStepsValidation = useMemo(
+    () => validateAllSteps(draft),
+    [draft]
   );
 
   function handleNext() {
@@ -83,11 +95,22 @@ function WizardContent({ classListPromise }: WizardShellProps) {
   }
 
   function handleFinalize() {
-    if (!validation.valid) {
+    if (!allStepsValidation.valid) {
       return;
     }
-    // Finalize orchestration is implemented in Phase 5.
-    void classes;
+
+    setCommitError(null);
+    setSuccessCharacterId(null);
+
+    startTransition(async () => {
+      const result = await commitCharacter(draft);
+      if (result.success) {
+        setSuccessCharacterId(result.characterId);
+        dispatch({ type: "reset" });
+      } else {
+        setCommitError(result.error);
+      }
+    });
   }
 
   function renderCurrentStep() {
@@ -97,6 +120,35 @@ function WizardContent({ classListPromise }: WizardShellProps) {
 
     const StepComponent = STEP_COMPONENTS[currentStep];
     return <StepComponent />;
+  }
+
+  if (successCharacterId !== null) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-6">
+        <div className="rounded border border-green-200 bg-green-50 p-6 text-green-900 dark:border-green-900 dark:bg-green-950 dark:text-green-100">
+          <h2 className="text-xl font-semibold">¡Personaje creado!</h2>
+          <p className="mt-2">
+            El personaje se ha guardado correctamente.
+          </p>
+          <div className="mt-4 flex gap-3">
+            <button
+              type="button"
+              onClick={() => router.push(`/characters/${successCharacterId}`)}
+              className="rounded bg-foreground px-4 py-2 text-background"
+            >
+              Ver ficha
+            </button>
+            <button
+              type="button"
+              onClick={() => setSuccessCharacterId(null)}
+              className="rounded border px-4 py-2 dark:border-zinc-700"
+            >
+              Crear otro personaje
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -117,11 +169,18 @@ function WizardContent({ classListPromise }: WizardShellProps) {
         </div>
       )}
 
+      {commitError !== null && (
+        <div className="rounded border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p className="font-medium">Error al finalizar</p>
+          <p>{commitError.message}</p>
+        </div>
+      )}
+
       <div className="flex justify-between">
         <button
           type="button"
           onClick={handleBack}
-          disabled={currentIndex === 0}
+          disabled={currentIndex === 0 || isPending}
           className="rounded border px-4 py-2 disabled:opacity-50 dark:border-zinc-700"
         >
           Atrás
@@ -130,10 +189,10 @@ function WizardContent({ classListPromise }: WizardShellProps) {
           <button
             type="button"
             onClick={handleFinalize}
-            disabled={!validation.valid}
+            disabled={!allStepsValidation.valid || isPending}
             className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
           >
-            Finalizar
+            {isPending ? "Guardando..." : "Finalizar"}
           </button>
         ) : (
           <button

@@ -214,37 +214,38 @@ Depends on Phase 1 and Phase 2 (class detail).
 
 Depends on Phase 1, Phase 3 (derived stats), and Phase 4 (no direct dependency but uses draft).
 
-- [ ] 5.1 Inspect seeded equipment tags to confirm armor spelling
+- [x] 5.1 Inspect seeded equipment tags to confirm armor spelling
   - Acceptance criteria: Document whether tags use `armadura n` or `armor n`; ensure parser handles both; update acceptance criteria in derived-stats if needed.
+  - Evidence: Backend equipment DTO exposes `metadata: { weight, tags, category, usesPerUnit }`. Seed tags were not directly inspectable, so `derived-stats.ts` keeps both `armadura N` and `armor N` spellings and notes the limitation.
   - File scope: `dungeon-world-api` seeded DB (read-only), `lib/character-wizard/derived-stats.ts` (read-only verification).
   - Checks: Design open question #2.
   - Rollback notes: N/A — verification only.
 
-- [ ] 5.2 Implement Step 8 — Equipment selection
+- [x] 5.2 Implement Step 8 — Equipment selection
   - Acceptance criteria: Shows class starting equipment from `classDetail.equipment`; allows selecting/deselecting items; displays total armor, carried load, max load, and encumbrance state; selection ids are a subset of class equipment ids.
-  - File scope: `app/characters/new/steps/equipment-step.tsx`.
+  - File scope: `app/characters/new/steps/equipment-step.tsx`, `lib/api/equipment.ts`, `lib/api/types.ts`.
   - Checks: Spec scenarios for equipment retention, armor/load sums, and encumbrance.
-  - Rollback notes: Delete the component.
+  - Rollback notes: Delete the component; revert equipment mapper/type changes.
 
-- [ ] 5.3 Create per-class bond templates
+- [x] 5.3 Create per-class bond templates
   - Acceptance criteria: `lib/character-wizard/bonds.ts` contains Spanish bond templates for all 8 official classes with `_____` slots; templates are frontend-owned static data.
   - File scope: `lib/character-wizard/bonds.ts`.
   - Checks: Design open question #3; spec scenario "Bond template is completed".
   - Rollback notes: Delete the file.
 
-- [ ] 5.4 Implement Step 9 — Bonds
+- [x] 5.4 Implement Step 9 — Bonds
   - Acceptance criteria: Shows templates for the selected class; each `_____` slot must be filled before finalize; completed bond text is stored as free text.
-  - File scope: `app/characters/new/steps/bonds-step.tsx`.
+  - File scope: `app/characters/new/steps/bonds-step.tsx`, `lib/character-wizard/draft.ts`.
   - Checks: Spec scenario "Required bond remains incomplete".
-  - Rollback notes: Delete the component.
+  - Rollback notes: Delete the component; revert `setBonds` action.
 
-- [ ] 5.5 Implement finalize commit orchestrator with rollback
+- [x] 5.5 Implement finalize commit orchestrator with rollback
   - Acceptance criteria: Runs validation; `POST /characters`; creates custom alignment if needed; selects alignment; selects race; replaces equipment; replaces spells only when cap-compliant; updates each answered move; creates each bond; on any failure after create, calls `DELETE /characters/:id` and surfaces a normalized error while preserving the draft.
   - File scope: `lib/character-wizard/commit.ts`.
   - Checks: Spec scenarios "Complete draft is persisted", "Custom alignment is created before selection", "Mid-sequence failure rolls back the new character", "Rollback failure is reported distinctly".
   - Rollback notes: Delete the file.
 
-- [ ] 5.6 Wire Finalize button and error/success UI in the wizard shell
+- [x] 5.6 Wire Finalize button and error/success UI in the wizard shell
   - Acceptance criteria: Finalize is disabled until all steps valid; clicking Finalize shows loading, then success or normalized error; success may clear the draft; error preserves draft for retry.
   - File scope: `app/characters/new/wizard.tsx`.
   - Checks: Spec scenarios for API error normalization.

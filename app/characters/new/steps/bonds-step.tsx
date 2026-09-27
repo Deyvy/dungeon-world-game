@@ -1,17 +1,86 @@
 "use client";
 
 import { useWizard } from "@/lib/character-wizard/wizard-context";
+import { getBondTemplates } from "@/lib/character-wizard/bonds";
 
 export default function BondsStep() {
-  const { draft } = useWizard();
+  const { draft, dispatch } = useWizard();
+
+  if (draft.classDetail === null) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Paso 9: Vínculos</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Vuelve al paso anterior y selecciona una clase primero.
+        </p>
+      </div>
+    );
+  }
+
+  const templates = getBondTemplates(draft.classDetail.name);
+
+  if (templates.length === 0) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Paso 9: Vínculos</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Esta clase no tiene plantillas de vínculo configuradas.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Paso 9: Vínculos</h2>
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Completa los vínculos iniciales con los otros personajes.
-      </p>
-      <p>Vínculos completados: {draft.bonds.filter((b) => b.complete).length} / {draft.bonds.length}</p>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h2 className="text-xl font-semibold">Paso 9: Vínculos</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Completa los vínculos iniciales de tu {draft.classDetail.name}{" "}
+          sustituyendo <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">_____</code>{" "}
+          por el nombre de otro personaje.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {templates.map((template) => {
+          const bond = draft.bonds.find((b) => b.templateId === template.id);
+          const text = bond?.text ?? template.text;
+          const complete = bond?.complete ?? false;
+
+          return (
+            <div key={template.id} className="space-y-2">
+              <label
+                htmlFor={`bond-${template.id}`}
+                className="block text-sm font-medium"
+              >
+                {template.text.replace(/_____/g, "…")}
+                {!complete && (
+                  <span className="ml-2 text-red-600">*</span>
+                )}
+              </label>
+              <input
+                id={`bond-${template.id}`}
+                type="text"
+                value={text}
+                onChange={(event) =>
+                  dispatch({
+                    type: "setBondText",
+                    templateId: template.id,
+                    text: event.target.value,
+                  })
+                }
+                placeholder="Escribe el nombre del personaje"
+                className="w-full rounded border bg-transparent px-3 py-2 dark:border-zinc-700"
+              />
+              {text.includes("_____") && (
+                <p className="text-sm text-red-700 dark:text-red-300">
+                  Sustituye _____ por el nombre de otro personaje.
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

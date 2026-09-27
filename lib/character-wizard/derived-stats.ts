@@ -39,6 +39,12 @@ const ARMOR_TAG_PATTERN = /^(?:armadura|armor)\s+(\d+)$/i;
 /**
  * Parse a single equipment tag for an armor value.
  * Supports "armadura N" and "armor N" case-insensitively.
+ *
+ * Apply-time note (Phase 5): the backend stores equipment metadata as a JSON
+ * string in `equipment.metadata`; the canonical tags are inside
+ * `metadata.tags`. The seed data was not directly inspectable from the
+ * workspace, so the parser keeps both Spanish and English spellings. Any tag
+ * that does not match either pattern contributes 0 armor.
  */
 export function parseArmorTag(tag: string): number {
   const match = tag.trim().match(ARMOR_TAG_PATTERN);

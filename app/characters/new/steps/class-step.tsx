@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { getClass } from "@/lib/api/classes";
 import { ClassSummary } from "@/lib/api/types";
+import { createDraftBonds } from "@/lib/character-wizard/bonds";
 import { useWizard } from "@/lib/character-wizard/wizard-context";
 
 export default function ClassStep({ classes }: { classes: ClassSummary[] }) {
@@ -25,6 +26,10 @@ export default function ClassStep({ classes }: { classes: ClassSummary[] }) {
       const classDetail = await getClass(classId);
       if (currentRequest === requestId.current) {
         dispatch({ type: "setClassDetail", classDetail });
+        dispatch({
+          type: "setBonds",
+          bonds: createDraftBonds(classDetail.name),
+        });
       }
     } catch {
       if (currentRequest === requestId.current) {

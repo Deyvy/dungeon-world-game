@@ -156,7 +156,11 @@ export function validateStep(
         break;
       }
 
-      const validIds = new Set(draft.classDetail.equipment.map((item) => item.id));
+      const validIds = new Set(
+        draft.classDetail.equipment
+          .map((item) => item.equipmentId)
+          .filter((id): id is number => id !== undefined && id !== null)
+      );
       const invalid = draft.equipmentIds.find((id) => !validIds.has(id));
       if (invalid !== undefined) {
         errors.push("Hay equipo seleccionado que no pertenece a esta clase.");

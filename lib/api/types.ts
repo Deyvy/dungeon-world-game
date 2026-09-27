@@ -34,6 +34,7 @@ export type ClassContent = {
   description?: string;
   content?: string;
   metadata?: unknown;
+  equipmentId?: number;
 };
 
 export type ContentElementType =

@@ -4,9 +4,9 @@
 
 **Change**: character-creation-wizard
 **Mode**: Standard (Strict TDD disabled)
-**Slice**: PR 5 — Class Configuration (Phase 4)
+**Slice**: PR 6 — Equipment, Bonds, and Finalize (Phase 5)
 **Chain strategy**: stacked-to-main
-**Branch**: `feat/character-creation-wizard-config` → `feat/character-creation-wizard-identity-stats`
+**Branch**: `feat/character-creation-wizard-finalize` → `feat/character-creation-wizard-config`
 
 ## Blockers
 
@@ -41,6 +41,13 @@
 4. **`computePersistableSpellIds` kept as a pure Phase 4 helper**
    - Added explicit JSDoc contract: pure, injectable lookup, no I/O, no rollback.
    - Documented that the default lookup uses fallback ids and that finalize for spellcasting classes will fail until real seeded ids replace them.
+
+### Phase 5 equipment-shape verification
+
+- Backend `GET /api/equipment` returns `{ id, name, description, metadata: { weight, tags, category, usesPerUnit } }`.
+- The frontend `EquipmentItem` type keeps top-level `weight`/`tags`; `lib/api/equipment.ts` maps `metadata.weight` and `metadata.tags` without changing the backend contract.
+- `classDetail.equipment[].equipmentId` is the canonical equipment id used for selection and for `POST /characters/:id/equipment`. Added `equipmentId?: number` to the frontend `ClassContent` type.
+- Seed equipment tags were not directly inspectable from the workspace, so `derived-stats.ts` keeps both `armadura N` and `armor N` spellings and documents the limitation.
 
 ## Completed Tasks
 
@@ -85,51 +92,58 @@
 - [x] 4.5 Create temporary mock spell module for draft lists
 - [x] 4.6 Enforce backend spell-cap at finalize
 
+### Phase 5: Equipment, Bonds, and Finalize
+
+- [x] 5.1 Inspect seeded equipment tags to confirm armor spelling
+- [x] 5.2 Implement Step 8 — Equipment selection
+- [x] 5.3 Create per-class bond templates
+- [x] 5.4 Implement Step 9 — Bonds
+- [x] 5.5 Implement finalize commit orchestrator with rollback
+- [x] 5.6 Wire Finalize button and error/success UI in the wizard shell
+
 ## Work Unit Evidence
 
 | Evidence | Value |
 |---|---|
 | Focused test command | `pnpm lint && pnpm build` |
 | Focused test result | lint: 0 errors; build: success (dynamic route `/characters/new`) |
-| Runtime harness | Start Next.js on port 3000 and open `/characters/new`; select Guerrero, advance to Step 7, fill the "Arma Distintiva" fields (name, description, type, two tags), and verify the configuration step becomes valid; inspect `GET /api/classes/1` and `/api/classes/2` to confirm initial-move `metadata` is `null` and only Guerrero has content elements; call `GET /api/spells` to confirm it returns only a stub string. |
-| Rollback boundary | Revert `lib/character-wizard/content-elements.ts`, `lib/character-wizard/content-element-renderer.tsx`, `lib/character-wizard/mocks/spells.ts`, `lib/character-wizard/commit.ts`, `app/characters/new/steps/config-step.tsx`, and the validation/parser changes in `lib/character-wizard/validation.ts` and `lib/api/types.ts`. |
+| Runtime harness | Start Next.js on port 3000 and open `/characters/new`; select Guerrero, fill Steps 1–9, click Finalizar. For a non-spellcasting class with valid data, finalize should create the character and show success. For Mage/Cleric, finalize is expected to fail on `POST /spells` because fallback ids are not real `spells` rows; verify rollback `DELETE /characters/:id` and error message. |
+| Rollback boundary | Revert `lib/character-wizard/commit.ts`, `lib/character-wizard/bonds.ts`, `lib/character-wizard/draft.ts` (setBonds only), `lib/api/equipment.ts`, `lib/api/types.ts` (equipmentId only), `app/characters/new/steps/equipment-step.tsx`, `app/characters/new/steps/bonds-step.tsx`, `app/characters/new/steps/class-step.tsx` (bond init only), `app/characters/new/wizard.tsx`, and the equipment-step validation change in `lib/character-wizard/validation.ts`. |
 
 ## Files Changed
 
 | File | Action | Purpose |
 |---|---|---|
-| `lib/character-wizard/content-elements.ts` | Modified | Metadata parser (canonical `requiresCompletion`, compatibility fallback `needsCompletion`, explicit `contentElements`/`none` sources); cardinality rules; new `validateElementConfig` that blocks unrepresentable minSelect/maxSelect configs; element validation with unsupported-type/config detection; answer serialization for move updates. |
-| `lib/character-wizard/content-element-renderer.tsx` | Modified | Generic renderer now validates element config before rendering and surfaces the specific reason when a configuration is unsupported. |
-| `lib/character-wizard/mocks/spells.ts` | Modified | Temporary spell catalog now uses isolated fallback id ranges (9000–9099 Mage, 9100–9199 Cleric) and exports `isFallbackSpellId`; comments record the exact backend limitation (`GET /api/spells` is a stub; only Guerrero/Mago seeded). |
-| `lib/character-wizard/commit.ts` | Modified | `computePersistableSpellIds` contract documented as a pure Phase 4 helper with injectable lookup; notes fallback-id limitation for Phase 5 integration. |
-| `app/characters/new/steps/config-step.tsx` | Modified | Lists initial moves, renders required content elements, surfaces unsupported element/config reasons per element, and adds a spell-selection section for temporary spellcasting classes. |
-| `lib/character-wizard/validation.ts` | Modified | Config-step validation reports specific unsupported element/config reasons as move-blocking errors. |
-| `lib/api/types.ts` | Modified | Added `sortOrder?: number` to `ContentElementOption` to match the backend detail DTO. |
-| `openspec/changes/character-creation-wizard/tasks.md` | Modified | Updated Phase 4 task evidence; marked 6.1 and 6.4 complete with observed limitations. |
-| `openspec/changes/character-creation-wizard/apply-progress.md` | Modified | Records Phase 4 contract-validation findings and updated file list. |
+| `lib/api/equipment.ts` | Modified | Maps backend `metadata.weight`/`metadata.tags` to frontend `EquipmentItem` top-level shape without changing the backend contract. |
+| `lib/api/types.ts` | Modified | Added optional `equipmentId` to `ClassContent` so equipment selection uses the canonical equipment id. |
+| `lib/character-wizard/bonds.ts` | Created | Frontend-owned Spanish bond templates for all 8 official classes with `_____` placeholders. |
+| `lib/character-wizard/draft.ts` | Modified | Added `setBonds` reducer action; bonds are initialized when a class detail loads. |
+| `lib/character-wizard/commit.ts` | Modified | Implemented finalize orchestrator: validation → create → alignment → race → equipment → spells → moves → bonds; rollback with distinct rollback-failure reporting. |
+| `lib/character-wizard/derived-stats.ts` | Modified | Armor-tag parser comment now documents the backend metadata shape and the inability to inspect seed tags directly. |
+| `lib/character-wizard/validation.ts` | Modified | Equipment-step validation now checks `equipmentId` instead of `classContent.id`. |
+| `app/characters/new/steps/class-step.tsx` | Modified | Initializes draft bonds from class templates after class detail loads. |
+| `app/characters/new/steps/equipment-step.tsx` | Modified | Full equipment selection UI with armor, carried load, max load, and encumbrance state. |
+| `app/characters/new/steps/bonds-step.tsx` | Modified | Bond completion UI that marks bonds incomplete while `_____` remains. |
+| `app/characters/new/wizard.tsx` | Modified | Finalize button wired through `commitCharacter`; loading, success, and normalized error UI; draft reset on success. |
+| `openspec/changes/character-creation-wizard/tasks.md` | Modified | Marked Phase 5 tasks complete. |
+| `openspec/changes/character-creation-wizard/apply-progress.md` | Modified | Records Phase 5 findings and updated file list. |
 
 ## Deviations from Design
 
 - The design says moves without a completion flag render text only. After inspecting the seeded DB, the only initial move with configurable content (Guerrero's "Arma Distintiva", contentId 8) ships `metadata: null`. To keep the wizard usable against the current seeded data, `parseMoveMetadata` defaults to `requiresCompletion: true` when `contentElements` are non-empty and no explicit opt-out is present. An explicit `requiresCompletion: false` still opts out. This deviation is documented in `content-elements.ts` and the source is now explicit (`contentElements`).
 - Spell selection for Mage/Cleric is implemented through the temporary mock module rather than through class-specific content elements, because the backend has not seeded move content for those classes. Move-element answers still capture Fighter's signature weapon via the generic renderer.
 - The design's cardinality table does not explicitly call out blocking unrepresentable bounds. The implementation now validates element configs and blocks RADIO/SELECT configurations that require more than one selection, matching the single-select controls in the renderer.
+- Equipment selection uses `classContent.equipmentId` rather than `classContent.id` because `POST /characters/:id/equipment` validates against the canonical `equipment` table. The frontend `ClassContent` type now carries `equipmentId` to support this.
+- Bond templates are a best-effort neutral Spanish rendering of the official Dungeon World bonds; they should be reviewed against the licensed Spanish edition when available.
 
 ## Issues Found
 
 - The seeded backend currently contains only two classes: Guerrero (id=1, complete initial move) and Mago (id=2, empty initial moves/equipment/races/alignments). The other six official classes are not present in the DB, so end-to-end functional checks covering all 8 classes are blocked until the backend is fully seeded.
-- `GET /api/spells` returns only the literal string `"This action returns all spells"`; no pre-character spell list is available. Real seeded spell ids cannot be mapped, so the temporary catalog keeps deterministic fallback ids in isolated ranges. Finalize for spellcasting classes will fail until real ids replace them (tracked in Phase 6 task 6.4, now recorded as a known limitation).
-- The backend equipment endpoint returns `weight` inside `metadata`, while the frontend `EquipmentItem` type expects `weight` top-level. This mismatch affects Phase 5 and is not fixed in this slice.
+- `GET /api/spells` returns only the literal string `"This action returns all spells"`; no pre-character spell list is available. Real seeded spell ids cannot be mapped, so the temporary catalog keeps deterministic fallback ids in isolated ranges. Finalize for spellcasting classes will fail until real ids replace them.
+- Seed equipment tags could not be inspected directly from the workspace; the parser keeps both Spanish and English spellings as a defensive measure.
+- Custom alignment rows on `classContent` (`metadata: { isCustom, characterId }`) are not deleted by `DELETE /characters/:id`. This is an accepted limitation documented in the design.
 
 ## Remaining Tasks
-
-### Phase 5: Equipment, Bonds, and Finalize
-
-- [ ] 5.1 Inspect seeded equipment tags to confirm armor spelling
-- [ ] 5.2 Implement Step 8 — Equipment selection
-- [ ] 5.3 Create per-class bond templates
-- [ ] 5.4 Implement Step 9 — Bonds
-- [ ] 5.5 Implement finalize commit orchestrator with rollback
-- [ ] 5.6 Wire Finalize button and error/success UI in the wizard shell
 
 ### Phase 6 & 7: Verification and Functional Checks
 
@@ -138,11 +152,12 @@
 
 ## Next Recommended Work Unit
 
-Implement **Phase 5 (Equipment, Bonds, and Finalize)** on a new `feat/character-creation-wizard-finalize` branch targeting `feat/character-creation-wizard-config`.
+Implement **Phase 6 (Apply-Time Verification)** and **Phase 7 (Manual Functional Checks)** on a new branch targeting `feat/character-creation-wizard-finalize`, or proceed directly to `sdd-archive` if the remaining verification tasks are deferred.
 
 ## Risks
 
 - Placeholder spell ids in `mocks/spells.ts` will cause finalize to fail for spellcasting classes until Phase 6 task 6.4 replaces them with real seeded ids.
 - The default-to-completing behavior for moves with `contentElements` but no metadata flag is a pragmatic deviation; if the backend later adds metadata to some moves, the parser will respect the explicit flag.
 - `ClassContent.title` rename continues to be respected by all later steps that render class-content labels.
-- The equipment API shape mismatch (`metadata.weight` vs top-level `weight`) must be resolved before Phase 5 can calculate real carried load.
+- Bond template wording should be reviewed against the official Spanish Dungeon World playbooks before considering the feature complete.
+- Rollback failure is reported distinctly, but the user must manually verify whether the orphaned character still exists.

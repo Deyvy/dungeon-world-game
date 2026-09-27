@@ -81,6 +81,7 @@ export type WizardAction =
   | { type: "setSpellIds"; spellIds: number[] }
   | { type: "toggleEquipment"; equipmentId: number }
   | { type: "setBondText"; templateId: string; text: string }
+  | { type: "setBonds"; bonds: WizardBond[] }
   | { type: "reset" }
   | { type: "classChange"; classId: number };
 
@@ -191,6 +192,12 @@ export function wizardReducer(
         bonds,
       };
     }
+
+    case "setBonds":
+      return {
+        ...draft,
+        bonds: action.bonds,
+      };
 
     case "reset":
       return { ...initialWizardDraft };

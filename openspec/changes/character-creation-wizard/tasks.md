@@ -169,37 +169,37 @@ Depends on Phase 1.
 
 Depends on Phase 1 and Phase 2 (class detail).
 
-- [ ] 4.1 Inspect seeded move metadata to lock the completion key
+- [x] 4.1 Inspect seeded move metadata to lock the completion key
   - Acceptance criteria: Document whether the DB uses `requiresCompletion`, `needsCompletion`, or both; update parser to treat truthy `requiresCompletion` canonical with `needsCompletion` as fallback; remove ambiguity before production code hardens.
   - File scope: `dungeon-world-api` seeded DB (read-only), `lib/character-wizard/content-elements.ts`.
   - Checks: Design open question #1.
   - Rollback notes: Revert parser change.
 
-- [ ] 4.2 Implement content-element metadata parser and cardinality rules
+- [x] 4.2 Implement content-element metadata parser and cardinality rules
   - Acceptance criteria: Moves without completion flag render text only; moves with the flag render elements in `sortOrder`; RADIO/SELECT default to exactly one; CHECKBOX defaults to 0..n unless completion required (then min 1); explicit `minSelect`/`maxSelect` override defaults.
   - File scope: `lib/character-wizard/content-elements.ts`.
   - Checks: Spec scenarios for required vs ordinary move and min/max select.
   - Rollback notes: Delete the file.
 
-- [ ] 4.3 Implement generic content-element renderer
+- [x] 4.3 Implement generic content-element renderer
   - Acceptance criteria: Supports TEXT, TEXTAREA, NUMBER, BOOLEAN, RADIO_GROUP, SELECT, CHECKBOX_GROUP; unknown types mark the move invalid with a Spanish message; answers keyed by `move.id` + `element.id` survive Back/Forward.
   - File scope: `lib/character-wizard/content-element-renderer.tsx`.
   - Checks: Spec scenario "Unknown element is not silently accepted".
   - Rollback notes: Delete the file.
 
-- [ ] 4.4 Implement Step 7 — Class configuration
+- [x] 4.4 Implement Step 7 — Class configuration
   - Acceptance criteria: Lists all `classDetail.initialMoves`; renders required move answers; validates every required move before continuing; captures Mage spellbook, Cleric deity/domain/precept, Fighter signature weapon, and Ranger animal companion via the generic renderer.
   - File scope: `app/characters/new/steps/config-step.tsx`.
   - Checks: Spec scenarios "Initial moves are listed with required choices" and "Class-specific choices are captured".
   - Rollback notes: Delete the component.
 
-- [ ] 4.5 Create temporary mock spell module for draft lists
+- [x] 4.5 Create temporary mock spell module for draft lists
   - Acceptance criteria: `lib/character-wizard/mocks/spells.ts` is clearly marked temporary; provides level-0 cantrips/prayers and any class-specific level-1+ lists not served by the backend; ids copied from the seeded DB so finalize can persist them where allowed.
   - File scope: `lib/character-wizard/mocks/spells.ts`.
   - Checks: Design open question #4; spec scenario "Temporary level-zero spell data is isolated".
   - Rollback notes: Delete the file.
 
-- [ ] 4.6 Enforce backend spell-cap at finalize
+- [x] 4.6 Enforce backend spell-cap at finalize
   - Acceptance criteria: `POST /characters/:id/spells` is sent only with a non-empty subset whose `sum(spellLevel) <= character.level + 1` (level 1 → cap 2); full wizard choices remain captured in move-element answers.
   - File scope: `lib/character-wizard/commit.ts` (partial), `lib/character-wizard/mocks/spells.ts`.
   - Checks: Design open question #5.

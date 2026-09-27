@@ -1,9 +1,11 @@
-import type {
-  ContentElement,
-  ElementAnswer,
-} from "@/lib/api/types";
 import type { WizardDraft } from "./draft";
 import { isStandardArrayComplete } from "./draft";
+import {
+  isInvalidElement,
+  isUnsupportedElement,
+  parseMoveMetadata,
+  validateElementAnswer,
+} from "@/lib/character-wizard/content-elements";
 
 export type WizardStep =
   | "class"
@@ -119,7 +121,9 @@ export function validateStep(
       }
 
       for (const move of draft.classDetail.initialMoves) {
-        const metadata = parseMoveMetadata(move.metadata);
+        const metadata = parseMoveMetadata(move.metadata, {
+          hasContentElements: (move.contentElements ?? []).length > 0,
+        });
         if (!metadata.requiresCompletion) {
           continue;
         }
@@ -129,9 +133,18 @@ export function validateStep(
 
         for (const element of elements) {
           const answer = moveAnswers[element.id];
-          const elementErrors = validateElementAnswer(element, answer);
-          if (elementErrors.length > 0) {
-            errors.push(`${move.title}: ${elementErrors.join(" ")}`);
+          const result = validateElementAnswer(
+            element,
+            answer,
+            metadata.requiresCompletion
+          );
+
+          if (isUnsupportedElement(result)) {
+            errors.push(
+              `${move.title}: tipo de elemento no soportado (${result.type}).`
+            );
+          } else if (isInvalidElement(result)) {
+            errors.push(`${move.title}: ${result.errors.join(" ")}`);
           }
         }
       }
@@ -186,94 +199,6 @@ export function validateAllSteps(draft: WizardDraft): { valid: boolean; errors: 
   };
 }
 
-type MoveMetadata = {
-  requiresCompletion: boolean;
-};
-
-export function parseMoveMetadata(metadata: unknown): MoveMetadata {
-  if (metadata === undefined || metadata === null) {
-    return { requiresCompletion: false };
-  }
-
-  if (typeof metadata !== "object") {
-    return { requiresCompletion: false };
-  }
-
-  const record = metadata as Record<string, unknown>;
-  const canonical = record.requiresCompletion;
-  const fallback = record.needsCompletion;
-
-  return {
-    requiresCompletion:
-      canonical === true || canonical === "true" ||
-      fallback === true || fallback === "true",
-  };
-}
-
-function validateElementAnswer(
-  element: ContentElement,
-  answer: ElementAnswer | undefined
-): string[] {
-  const errors: string[] = [];
-
-  switch (element.type) {
-    case "TEXT":
-    case "TEXTAREA": {
-      const value = answer?.kind === "text" ? answer.value : undefined;
-      if (value === undefined || value.trim() === "") {
-        errors.push(`Completa el campo "${element.label}".`);
-      }
-      break;
-    }
-
-    case "NUMBER": {
-      const value = answer?.kind === "number" ? answer.value : undefined;
-      if (value === undefined || Number.isNaN(value)) {
-        errors.push(`Completa el campo numérico "${element.label}".`);
-      }
-      break;
-    }
-
-    case "BOOLEAN": {
-      if (answer?.kind !== "boolean") {
-        errors.push(`Selecciona una opción para "${element.label}".`);
-      }
-      break;
-    }
-
-    case "RADIO_GROUP":
-    case "SELECT": {
-      const optionIds = answer?.kind === "choice" ? answer.optionIds : [];
-      if (optionIds.length === 0) {
-        errors.push(`Selecciona una opción para "${element.label}".`);
-      }
-      break;
-    }
-
-    case "CHECKBOX_GROUP": {
-      const optionIds = answer?.kind === "choice" ? answer.optionIds : [];
-      const min = element.minSelect ?? 1;
-      const max = element.maxSelect;
-
-      if (optionIds.length < min) {
-        errors.push(
-          `Selecciona al menos ${min} opción${min === 1 ? "" : "es"} para "${element.label}".`
-        );
-      }
-      if (max !== undefined && optionIds.length > max) {
-        errors.push(
-          `Selecciona como máximo ${max} opción${max === 1 ? "" : "es"} para "${element.label}".`
-        );
-      }
-      break;
-    }
-
-    default:
-      errors.push(`Tipo de elemento no soportado: ${element.type}.`);
-  }
-
-  return errors;
-}
 
 export function getStepIndex(step: WizardStep): number {
   return STEP_ORDER.indexOf(step);

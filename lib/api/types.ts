@@ -49,6 +49,7 @@ export type ContentElementOption = {
   id: number;
   label: string;
   description?: string;
+  sortOrder?: number;
 };
 
 export type ContentElement = {

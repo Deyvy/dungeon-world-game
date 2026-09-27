@@ -10,7 +10,7 @@ import {
 
 type AbilityStats = Record<Ability, number | null>;
 
-type AppearanceDraft = {
+export type AppearanceDraft = {
   gaze: string;
   hair: string;
   clothing: string;

@@ -4,15 +4,15 @@
 
 **Change**: character-creation-wizard
 **Mode**: Standard (Strict TDD disabled)
-**Slice**: PR 3 — Class, Race, and Alignment (Phase 2)
+**Slice**: PR 4 — Identity, Stats, and Derived Values (Phase 3)
 **Chain strategy**: stacked-to-main
-**Branch**: `feat/character-creation-wizard-class-race-alignment` → `feat/character-creation-wizard-foundation`
+**Branch**: `feat/character-creation-wizard-identity-stats` → `feat/character-creation-wizard-class-race-alignment`
 
 ## Blockers
 
-- None. The previous Phase 0 blocker has been reconciled: the sibling `dungeon-world-api` already exposes `damageDice` on the schema, `ClassDetailDto`, and the class mapper.
+- None.
 
-## Corrective Finding (this pass)
+## Corrective Finding (previous pass)
 
 - Phase 2 task 2.2 displayed the selected race description but only stored `raceContentId` in `WizardDraft`.
 - Fix: extended `WizardDraft` with `raceMechanic: string`; `selectRace` now carries `raceContentId` and `raceMechanic` (populated from `ClassContent.content`); `clearDependentChoices` resets `raceMechanic` on class change.
@@ -45,45 +45,43 @@
 - [x] 2.3 Implement Step 6 — Alignment selection
 - [x] 2.4 Verify class-change invalidation
 
+### Phase 3: Identity, Stats, and Derived Values
+
+- [x] 3.1 Implement Step 3 — Identity and appearance
+- [x] 3.2 Implement derived-stats pure functions
+- [x] 3.3 Implement Step 4 — Stats array assignment
+- [x] 3.4 Implement Step 5 — Derived HP/load display
+
 ## Work Unit Evidence
 
 | Evidence | Value |
 |---|---|
 | Focused test command | `pnpm lint && pnpm build` |
 | Focused test result | lint: 0 errors; build: success (dynamic route `/characters/new`) |
-| Runtime harness | Start Next.js on port 3000 and open `/characters/new`; select a class and confirm base HP/damage/load appear; select a race and verify only class races are shown; select a standard or custom alignment and verify empty custom fields block progression; change class and verify dependent choices clear. |
-| Rollback boundary | Revert `app/characters/new/steps/class-step.tsx`, `app/characters/new/steps/race-step.tsx`, `app/characters/new/steps/alignment-step.tsx`; revert `lib/api/types.ts` `ClassContent.name` → `ClassContent.title`; revert `lib/character-wizard/validation.ts` move-title error. |
+| Runtime harness | Start Next.js on port 3000 and open `/characters/new`; reach Step 3, fill name and optional appearance fields including extra lines, and verify progression is allowed; on Step 4 assign each standard-array score to a different ability and confirm used scores are disabled; on Step 5 confirm max HP = class base + CON score, max load = class base + STR score, encumbrance preview shows "within limit" for zero carried load, and modifiers update immediately when scores are swapped. |
+| Rollback boundary | Revert `lib/character-wizard/derived-stats.ts`, `app/characters/new/steps/identity-step.tsx`, `app/characters/new/steps/stats-step.tsx`, `app/characters/new/steps/derived-step.tsx`; revert `AppearanceDraft` export in `lib/character-wizard/draft.ts`. |
 
 ## Files Changed
 
 | File | Action | Purpose |
 |---|---|---|
-| `app/characters/new/steps/class-step.tsx` | Modified | Loads class detail on selection, shows `d{n}` damage dice, base HP, and base load; avoids duplicate fetches and shows loading/error states. |
-| `app/characters/new/steps/race-step.tsx` | Modified | Lists only the selected class's races, displays the racial mechanic from the race content, and dispatches both `raceContentId` and `raceMechanic` to the draft. |
-| `lib/character-wizard/draft.ts` | Modified | Adds `raceMechanic` to `WizardDraft`; `selectRace` stores it; `clearDependentChoices` clears it on class change. |
-| `app/characters/new/steps/alignment-step.tsx` | Modified | Supports standard alignment selection from `classDetail.alignments` and a custom alignment with name + description; disables custom inputs until custom mode is active. |
-| `lib/api/types.ts` | Modified | Renames `ClassContent.name` to `ClassContent.title` to match the backend `ClassDetailDto` contract. |
-| `lib/character-wizard/validation.ts` | Modified | Updates move validation error message to use `move.title` instead of the removed `move.name`. |
-| `openspec/changes/character-creation-wizard/tasks.md` | Modified | Marks Phase 0 and Phase 2 complete; resolves chain strategy to `stacked-to-main`. |
+| `lib/character-wizard/derived-stats.ts` | Created | Pure functions for DW modifier table (1–18 with invalid out-of-range), max HP, max load, armor tag parser (`armadura`/`armor`), carried load, encumbrance, and display helpers. |
+| `app/characters/new/steps/identity-step.tsx` | Modified | Full identity form with required name, optional gaze/hair/clothing/body fields, and dynamic extra appearance lines with add/remove. |
+| `app/characters/new/steps/stats-step.tsx` | Modified | Six ability dropdowns populated from the standard array; already-assigned scores are disabled in other abilities to enforce exact uniqueness. |
+| `app/characters/new/steps/derived-step.tsx` | Modified | Display-only step showing max HP, max load, encumbrance preview (carried load is currently zero until equipment is implemented), and all six ability modifiers. |
+| `lib/character-wizard/draft.ts` | Modified | Exports `AppearanceDraft` so the identity step can type its local field configuration. |
+| `openspec/changes/character-creation-wizard/tasks.md` | Modified | Marks Phase 3 tasks complete. |
 
 ## Deviations from Design
 
-- **Type correction, not a UX deviation**: `ClassContent` used `name` in the frontend mirror but the backend DTO returns `title`. Renamed the field to align the mirror with the actual API contract. The UI now renders race/alignment titles correctly.
-- No other deviations from `design.md`.
+- None. Implementation matches `design.md`.
+- Note: `modifier(score)` returns a tagged union (`{ kind: "valid"; value: number } | { kind: "invalid"; score: number }`) to satisfy the spec requirement of reporting invalid out-of-range scores instead of returning a misleading value.
 
 ## Issues Found
 
 - None within the implemented slice.
-- Backend build note: a previous attempt reportedly failed with `ERR_PNPM_IGNORED_BUILDS`. In this session, `pnpm build` in `dungeon-world-api` completed successfully (`$ nest build` with no errors). The frontend build also succeeded.
 
 ## Remaining Tasks
-
-### Phase 3: Identity, Stats, and Derived Values
-
-- [ ] 3.1 Implement Step 3 — Identity and appearance
-- [ ] 3.2 Implement derived-stats pure functions
-- [ ] 3.3 Implement Step 4 — Stats array assignment
-- [ ] 3.4 Implement Step 5 — Derived HP/load display
 
 ### Phase 4: Class Configuration (Step 7)
 
@@ -110,10 +108,10 @@
 
 ## Next Recommended Work Unit
 
-Implement **Phase 3 (Identity, Stats, and Derived Values)** on a new `feat/character-creation-wizard-identity-stats` branch targeting `feat/character-creation-wizard-class-race-alignment`.
+Implement **Phase 4 (Class Configuration)** on a new `feat/character-creation-wizard-config` branch targeting `feat/character-creation-wizard-identity-stats`.
 
 ## Risks
 
-- `ClassContent.title` rename must be respected by all later steps that render class-content labels (equipment, configuration). The remaining placeholder steps do not yet reference these fields.
-- The custom alignment flow stores free-text values in the draft; finalization will need to call `POST /characters/:id/alignments/custom` before selection (Phase 5).
+- `ClassContent.title` rename must continue to be respected by all later steps that render class-content labels.
+- The derived step currently shows zero carried load because equipment selection is not yet implemented; the encumbrance preview is accurate for the current draft state and will gain real totals in Phase 5.
 - `useWizardSelector` subscription store is intentionally simple; verify performance with real step components in later phases.

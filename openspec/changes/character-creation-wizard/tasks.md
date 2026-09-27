@@ -139,25 +139,25 @@ Depends on Phase 1.
 
 Depends on Phase 1.
 
-- [ ] 3.1 Implement Step 3 — Identity and appearance
+- [x] 3.1 Implement Step 3 — Identity and appearance
   - Acceptance criteria: Required `name.trim()`. Optional text fields for gaze, hair/head, clothing/attire, body; supports adding extra appearance lines; blanks are retained.
   - File scope: `app/characters/new/steps/identity-step.tsx`.
   - Checks: Spec scenario "Identity and optional appearance are accepted".
   - Rollback notes: Delete the component.
 
-- [ ] 3.2 Implement derived-stats pure functions
+- [x] 3.2 Implement derived-stats pure functions
   - Acceptance criteria: `modifier(score)` returns official DW values for 1–18 and reports invalid for out-of-range; `maxHp = hitPoints + constitution`; `maxLoad = baseLoad + strength`; armor parser sums case-insensitive `armadura n`/`armor n` tags; `carriedLoad` sums `weight * quantity`; `encumbered = carried > maxLoad`.
   - File scope: `lib/character-wizard/derived-stats.ts`.
   - Checks: Spec scenarios in `character-derived-stats`.
   - Rollback notes: Delete the file.
 
-- [ ] 3.3 Implement Step 4 — Stats array assignment
+- [x] 3.3 Implement Step 4 — Stats array assignment
   - Acceptance criteria: User assigns `16, 15, 13, 12, 9, 8` exactly once each across the six abilities; duplicate assignment is rejected; all six must be assigned to continue.
   - File scope: `app/characters/new/steps/stats-step.tsx`.
   - Checks: Spec scenarios "Valid standard array assignment" and "Duplicate score cannot be assigned".
   - Rollback notes: Delete the component.
 
-- [ ] 3.4 Implement Step 5 — Derived HP/load display
+- [x] 3.4 Implement Step 5 — Derived HP/load display
   - Acceptance criteria: Display-only step shows max HP, max load, and encumbrance preview based on current class and stats; updates immediately when the user returns to Step 4 and changes assignments.
   - File scope: `app/characters/new/steps/derived-step.tsx`.
   - Checks: Spec scenario "Derived values update after reassignment".

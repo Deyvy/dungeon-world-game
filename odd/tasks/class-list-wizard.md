@@ -37,7 +37,7 @@ Users currently see an empty class step despite a successful backend response.
 
 ## Progress
 - Route: delegated direct writer (2 non-trivial source files; preparation and implementation delegated together).
-- Status: implemented. `WizardContent` passes the resolved summaries to `ClassStep`; selecting an option stores the class ID, fetches the detail required by existing validation, and preserves the selected radio option across rerenders.
+- Status: implemented in commit `30272d5`. `WizardContent` passes the resolved summaries to `ClassStep`; selecting an option stores the class ID, fetches the detail required by existing validation, and preserves the selected radio option across rerenders.
 - The reducer and validation contract remain unchanged.
 
 ## Verification evidence
@@ -45,4 +45,4 @@ Users currently see an empty class step despite a successful backend response.
 - `pnpm build` — passed (Next.js production build completed successfully, including TypeScript checks and route generation).
 
 ## Next step
-No further implementation is required. The changes remain uncommitted as requested.
+No further implementation is required. The implementation work is committed; unrelated pre-existing changes remain untouched.

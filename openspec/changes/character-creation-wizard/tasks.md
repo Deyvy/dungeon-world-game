@@ -9,11 +9,11 @@
 | Chained PRs recommended | Yes |
 | Suggested split | PR 1 (backend exposure) → PR 2 (foundation + shell) → PR 3 (class/race/alignment) → PR 4 (identity/stats/derived) → PR 5 (class configuration) → PR 6 (equipment/bonds/finalize) |
 | Delivery strategy | auto-chain |
-| Chain strategy | pending |
+| Chain strategy | stacked-to-main |
 
 Decision needed before apply: Yes
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: stacked-to-main
 400-line budget risk: High
 
 The chain strategy has not been selected yet. Before `sdd-apply` starts, the team must choose `stacked-to-main`, `feature-branch-chain`, or `size-exception`. Because the delivery strategy is `auto-chain`, once the strategy is selected the orchestrator may proceed with the first slice without another go/no-go decision.
@@ -35,19 +35,19 @@ The chain strategy has not been selected yet. Before `sdd-apply` starts, the tea
 
 Foundation for the class step. Must land before frontend work that reads `damageDice`.
 
-> **BLOCKED**: Phase 0 files live in the sibling `dungeon-world-api` repository, which is outside the authorized workspace edit root (`dungeon-world-game`). Do not edit those files without explicit authorization. Report this blocker in the apply result and do not proceed with dependent frontend work until Phase 0 lands.
+> **Externally verified**: Phase 0 files live in the sibling `dungeon-world-api` repository, which is outside the authorized workspace edit root (`dungeon-world-game`). The `damageDice` column, DTO field, and mapper mapping were verified read-only; `pnpm build` in `dungeon-world-api` succeeds in this environment.
 
-- [ ] 0.1 Verify `classes.damageDice` column and migration exist in `dungeon-world-api` (read-only)
+- [x] 0.1 Verify `classes.damageDice` column and migration exist in `dungeon-world-api` (read-only)
   - Acceptance criteria: The Prisma schema contains `damageDice Int` on `classes`; the migration table includes `20260924200000_add_class_damage_dice`; all 8 seeded rows have non-null values.
   - File scope: `dungeon-world-api/prisma/schema.prisma` (read-only), `dungeon-world-api/prisma/migrations/*/migration.sql` (read-only), seeded DB.
   - Rollback notes: If the column is missing, stop and surface a blocker; do not add a migration without explicit approval.
 
-- [ ] 0.2 Add `damageDice` to `ClassDetailDto` in `dungeon-world-api`
+- [x] 0.2 Add `damageDice` to `ClassDetailDto` in `dungeon-world-api`
   - Acceptance criteria: The DTO declares `damageDice!: number` and matches the design contract.
   - File scope: `dungeon-world-api/src/modules/classes/dto/class-detail.dto.ts`.
   - Rollback notes: Revert this single-file additive change.
 
-- [ ] 0.3 Map `damageDice` in the class mapper
+- [x] 0.3 Map `damageDice` in the class mapper
   - Acceptance criteria: `ClassMapper.toDetail` copies `model.damageDice` into the DTO; `GET /api/classes/:id` returns the field for all seeded classes.
   - File scope: `dungeon-world-api/src/modules/classes/mappers/class.mapper.ts`.
   - Rollback notes: Revert the mapper change together with the DTO change.
@@ -109,25 +109,25 @@ Everything downstream depends on the API client, rewrite, and wizard shell.
 
 Depends on Phase 1.
 
-- [ ] 2.1 Implement Step 1 — Class selection
+- [x] 2.1 Implement Step 1 — Class selection
   - Acceptance criteria: Lists classes from `GET /api/classes`; selecting a class fetches detail and displays `hitPoints`, `damageDice` as `d{n}`, and `baseLoad`; only one class can be selected at a time.
   - File scope: `app/characters/new/steps/class-step.tsx`.
   - Checks: Spec scenario "Class detail is displayed".
   - Rollback notes: Delete the component.
 
-- [ ] 2.2 Implement Step 2 — Race selection
+- [x] 2.2 Implement Step 2 — Race selection
   - Acceptance criteria: Shows only `classDetail.races`; selecting a race stores `raceContentId` and shows the race description as the racial mechanic.
   - File scope: `app/characters/new/steps/race-step.tsx`.
   - Checks: Spec scenario "Race is restricted to the selected class".
   - Rollback notes: Delete the component.
 
-- [ ] 2.3 Implement Step 6 — Alignment selection
+- [x] 2.3 Implement Step 6 — Alignment selection
   - Acceptance criteria: Lists `classDetail.alignments`; supports standard selection; supports custom alignment with name + description; validation blocks empty custom fields.
   - File scope: `app/characters/new/steps/alignment-step.tsx`.
   - Checks: Spec scenarios "Custom alignment is captured" and "Invalid custom alignment is rejected".
   - Rollback notes: Delete the component.
 
-- [ ] 2.4 Verify class-change invalidation
+- [x] 2.4 Verify class-change invalidation
   - Acceptance criteria: Changing the class in Step 1 clears race, alignment, move answers, spells, equipment, and bonds from the draft; navigation to later steps requires re-selection.
   - File scope: `lib/character-wizard/draft.ts`.
   - Checks: Spec scenario "Class change invalidates dependent choices".

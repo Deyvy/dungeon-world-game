@@ -30,7 +30,7 @@ export type ClassSummary = {
 
 export type ClassContent = {
   id: number;
-  name: string;
+  title: string;
   description?: string;
   content?: string;
   metadata?: unknown;

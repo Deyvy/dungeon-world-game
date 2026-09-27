@@ -9,10 +9,16 @@ export default function ClassStep({ classes }: { classes: ClassSummary[] }) {
   const { draft, dispatch } = useWizard();
   const requestId = useRef(0);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleClassChange(classId: number) {
+    if (draft.classId === classId && draft.classDetail !== null) {
+      return;
+    }
+
     const currentRequest = ++requestId.current;
     setError(null);
+    setIsLoading(true);
     dispatch({ type: "selectClass", classId });
 
     try {
@@ -23,6 +29,10 @@ export default function ClassStep({ classes }: { classes: ClassSummary[] }) {
     } catch {
       if (currentRequest === requestId.current) {
         setError("No se pudieron cargar los datos de la clase.");
+      }
+    } finally {
+      if (currentRequest === requestId.current) {
+        setIsLoading(false);
       }
     }
   }
@@ -41,7 +51,9 @@ export default function ClassStep({ classes }: { classes: ClassSummary[] }) {
         {classes.map((classSummary) => (
           <label
             key={classSummary.id}
-            className="flex cursor-pointer items-center gap-3 rounded border p-4 dark:border-zinc-700"
+            className={`flex cursor-pointer items-center gap-3 rounded border p-4 dark:border-zinc-700 ${
+              draft.classId === classSummary.id ? "border-foreground" : ""
+            }`}
           >
             <input
               type="radio"
@@ -54,7 +66,14 @@ export default function ClassStep({ classes }: { classes: ClassSummary[] }) {
           </label>
         ))}
       </fieldset>
+
+      {isLoading && (
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Cargando datos de la clase...
+        </p>
+      )}
       {error && <p className="text-red-700 dark:text-red-300">{error}</p>}
+
       {draft.classDetail && (
         <div className="rounded border p-4 dark:border-zinc-700">
           <p>

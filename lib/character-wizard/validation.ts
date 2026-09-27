@@ -131,7 +131,7 @@ export function validateStep(
           const answer = moveAnswers[element.id];
           const elementErrors = validateElementAnswer(element, answer);
           if (elementErrors.length > 0) {
-            errors.push(`${move.name}: ${elementErrors.join(" ")}`);
+            errors.push(`${move.title}: ${elementErrors.join(" ")}`);
           }
         }
       }

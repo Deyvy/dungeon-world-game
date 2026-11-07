@@ -168,14 +168,6 @@ export function validateStep(
       break;
     }
 
-    case "bonds": {
-      const incomplete = draft.bonds.find((bond) => !bond.complete);
-      if (incomplete !== undefined) {
-        errors.push("Completa todos los vínculos antes de finalizar.");
-      }
-      break;
-    }
-
     default:
       break;
   }

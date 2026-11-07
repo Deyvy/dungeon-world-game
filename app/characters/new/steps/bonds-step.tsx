@@ -45,7 +45,6 @@ export default function BondsStep() {
         {templates.map((template) => {
           const bond = draft.bonds.find((b) => b.templateId === template.id);
           const text = bond?.text ?? template.text;
-          const complete = bond?.complete ?? false;
 
           return (
             <div key={template.id} className="space-y-2">
@@ -53,15 +52,11 @@ export default function BondsStep() {
                 htmlFor={`bond-${template.id}`}
                 className="block text-sm font-medium"
               >
-                {template.text.replace(/_____/g, "…")}
-                {!complete && (
-                  <span className="ml-2 text-red-600">*</span>
-                )}
+                Vínculo {templates.indexOf(template) + 1}
               </label>
               <input
                 id={`bond-${template.id}`}
                 type="text"
-                value={text}
                 onChange={(event) =>
                   dispatch({
                     type: "setBondText",
@@ -69,14 +64,9 @@ export default function BondsStep() {
                     text: event.target.value,
                   })
                 }
-                placeholder="Escribe el nombre del personaje"
+                placeholder={text}
                 className="w-full rounded border bg-transparent px-3 py-2 dark:border-zinc-700"
               />
-              {text.includes("_____") && (
-                <p className="text-sm text-red-700 dark:text-red-300">
-                  Sustituye _____ por el nombre de otro personaje.
-                </p>
-              )}
             </div>
           );
         })}
